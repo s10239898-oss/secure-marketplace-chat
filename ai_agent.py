@@ -1,8 +1,14 @@
 import requests
+import os
+from dotenv import load_dotenv
 from database import get_connection
 from encryption import decrypt_message
 
-OPENROUTER_API_KEY = "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"
+# Load environment variables
+load_dotenv()
+
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+AI_MODEL = os.getenv('AI_MODEL', 'qwen/qwen-2.5-7b-instruct')
 
 SELLER_PERSONALITIES = {
     "seller1": {
@@ -76,6 +82,10 @@ def get_user_id(username):
 
 def ai_reply(message, seller_username, buyer_username=None):
     """Generate AI response with personality and conversation context"""
+    if not OPENROUTER_API_KEY:
+        print("Warning: OPENROUTER_API_KEY not found in environment variables")
+        return "AI service is temporarily unavailable. Please try again later."
+    
     seller_info = SELLER_PERSONALITIES.get(seller_username, {
         "name": "Helpful Seller",
         "personality": "You are a helpful marketplace seller.",
@@ -111,7 +121,7 @@ Be helpful and address the customer's needs while staying in character."""
                 "Content-Type": "application/json"
             },
             json={
-                "model": "openai/gpt-4o-mini",
+                "model": AI_MODEL,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message}

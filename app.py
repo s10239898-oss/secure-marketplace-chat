@@ -1,12 +1,17 @@
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import os
+from dotenv import load_dotenv
 from encryption import encrypt_message
 from database import (save_message, get_message_history, get_users_by_role, get_user_id, 
                      get_recent_conversations, search_messages, get_message_statistics, delete_message)
 from ai_agent import ai_reply
 
+# Load environment variables
+load_dotenv()
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secure_chat_secret_key_2024'
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'secure_chat_secret_key_2024')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Track active users and their rooms

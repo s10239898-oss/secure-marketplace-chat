@@ -74,13 +74,27 @@ pip install -r requirements.txt
 psql -h localhost -U moturi311 -d chatdb -f schema.sql
 ```
 
-### 5. Configure AI API
+### 5. Configure Environment Variables
 
-Edit `ai_agent.py` and replace the API key:
+Create a `.env` file with your configuration:
 
-```python
-OPENROUTER_API_KEY = "your-openrouter-api-key-here"
+```bash
+# OpenRouter API Configuration
+OPENROUTER_API_KEY=your-openrouter-api-key-here
+AI_MODEL=qwen/qwen-2.5-7b-instruct
+
+# Database Configuration
+DB_NAME=chatdb
+DB_USER=moturi311
+DB_PASSWORD=soweto311
+DB_HOST=localhost
+
+# Flask Configuration
+FLASK_SECRET_KEY=secure_chat_secret_key_2024
+FLASK_DEBUG=True
 ```
+
+**Important**: Keep your `.env` file secure and never commit it to version control.
 
 ### 6. Run Application
 
@@ -88,7 +102,7 @@ OPENROUTER_API_KEY = "your-openrouter-api-key-here"
 python app.py
 ```
 
-The application will start on `http://localhost:5000`
+The application will start on `http://localhost:5001`
 
 ## Usage
 

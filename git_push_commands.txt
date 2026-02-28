@@ -1,0 +1,10 @@
+# Replace YOUR_USERNAME with your actual GitHub username
+# Run these commands after creating the GitHub repository
+
+git remote add origin https://github.com/YOUR_USERNAME/secure-marketplace-chat.git
+git branch -M main
+git push -u origin main
+
+# Alternative: If you want to keep master branch name
+# git remote add origin https://github.com/YOUR_USERNAME/secure-marketplace-chat.git
+# git push -u origin master

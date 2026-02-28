@@ -1,13 +1,18 @@
 import psycopg2
+import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from encryption import decrypt_message
+
+# Load environment variables
+load_dotenv()
 
 def get_connection():
     return psycopg2.connect(
-        dbname="chatdb",
-        user="moturi311",
-        password="soweto311",
-        host="localhost"
+        dbname=os.getenv('DB_NAME', 'chatdb'),
+        user=os.getenv('DB_USER', 'moturi311'),
+        password=os.getenv('DB_PASSWORD', 'soweto311'),
+        host=os.getenv('DB_HOST', 'localhost')
     )
 
 def get_user_id(username):
