@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Marketplace Chat</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+    <div class="login-box">
+        <h2>🔐 Secure Chat Login</h2>
+        
+        <select id="username" required>
+            <option value="">Select your username</option>
+            <optgroup label="Buyers">
+                <option value="buyer1">buyer1</option>
+                <option value="buyer2">buyer2</option>
+                <option value="buyer3">buyer3</option>
+                <option value="buyer4">buyer4</option>
+                <option value="buyer5">buyer5</option>
+            </optgroup>
+            <optgroup label="Sellers">
+                <option value="seller1">seller1 - TechPro Electronics</option>
+                <option value="seller2">seller2 - QuickDeal Store</option>
+                <option value="seller3">seller3 - FriendlyBob's Shop</option>
+                <option value="seller4">seller4 - Luxury Premium</option>
+                <option value="seller5">seller5 - Speedy Sales</option>
+            </optgroup>
+        </select>
+
+        <input type="password" id="password" placeholder="Enter password" required>
+        
+        <button onclick="login()" id="loginBtn">Enter Chat</button>
+        
+        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 12px;">
+            Demo password: <strong>soweto311</strong>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span id="currentUser">Welcome!</span>
+        </div>
+        <div id="contacts"></div>
+    </div>
+
+    <!-- CHAT AREA -->
+    <div class="chat-area">
+        <div class="chat-header" id="chatHeader">
+            <div class="empty-state" id="emptyHeader">
+                <div class="empty-state-text">Select a conversation to start chatting</div>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="empty-state" id="emptyMessages">
+                <div class="empty-state-icon">💬</div>
+                <div class="empty-state-text">Choose a contact to begin</div>
+            </div>
+        </div>
+
+        <div class="chat-input" id="chatInput" style="display: none;">
+            <input id="messageInput" placeholder="Type a message..." disabled>
+            <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const socket = io();
+
+let currentUser = "";
+let currentChat = "";
+let userRole = "";
+let contacts = [];
+
+// Socket event listeners
+socket.on("connect", () => {
+    console.log("Connected to server");
+});
+
+socket.on("login_success", (data) => {
+    currentUser = data.username;
+    userRole = currentUser.startsWith('buyer') ? 'buyer' : 'seller';
+    showApp();
+});
+
+socket.on("login_error", (data) => {
+    alert(data.message);
+    document.getElementById("loginBtn").disabled = false;
+    document.getElementById("loginBtn").textContent = "Enter Chat";
+});
+
+socket.on("joined_chat", (data) => {
+    currentChat = data.partner;
+    updateChatHeader(data.partner);
+    enableChatInput();
+});
+
+socket.on("chat_history", (data) => {
+    loadMessageHistory(data.messages || []);
+});
+
+socket.on("receive_message", (data) => {
+    if (data.sender === currentChat || data.receiver === currentChat) {
+        addMessage(data);
+    }
+});
+
+socket.on("send_error", (data) => {
+    console.error("Send error:", data.message);
+    showError("Failed to send message");
+});
+
+socket.on("ai_error", (data) => {
+    console.error("AI error:", data.message);
+});
+
+// Login function
+function login() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    console.log("Attempting login with:", username);
+
+    if (!username || !password) {
+        alert("Please enter both username and password");
+        return;
+    }
+
+    document.getElementById("loginBtn").disabled = true;
+    document.getElementById("loginBtn").textContent = "Logging in...";
+
+    socket.emit("login", { username, password });
+}
+
+// Show main app
+function showApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    document.getElementById("currentUser").textContent = `👤 ${currentUser}`;
+    
+    loadContacts();
+}
+
+// Load contacts based on user role
+function loadContacts() {
+    const targetRole = userRole === 'buyer' ? 'seller' : 'buyer';
+    
+    // For demo, use hardcoded contacts
+    contacts = userRole === 'buyer' ? 
+        ['seller1', 'seller2', 'seller3', 'seller4', 'seller5'] :
+        ['buyer1', 'buyer2', 'buyer3', 'buyer4', 'buyer5'];
+    
+    renderContacts();
+}
+
+// Render contacts list
+function renderContacts() {
+    const container = document.getElementById("contacts");
+    container.innerHTML = "";
+
+    contacts.forEach(contact => {
+        const div = document.createElement("div");
+        div.className = "contact";
+        div.onclick = () => selectChat(contact);
+        
+        const avatar = document.createElement("div");
+        avatar.className = "contact-avatar";
+        avatar.textContent = contact.charAt(0).toUpperCase();
+        
+        const info = document.createElement("div");
+        info.className = "contact-info";
+        
+        const name = document.createElement("div");
+        name.className = "contact-name";
+        name.textContent = contact;
+        
+        const role = document.createElement("div");
+        role.className = "contact-role";
+        role.textContent = contact.startsWith('seller') ? 'Seller' : 'Buyer';
+        
+        info.appendChild(name);
+        info.appendChild(role);
+        div.appendChild(avatar);
+        div.appendChild(info);
+        container.appendChild(div);
+    });
+}
+
+// Select chat partner
+function selectChat(partner) {
+    if (currentChat === partner) return;
+    
+    // Leave current room if any
+    if (currentChat) {
+        socket.emit("leave_chat", {
+            username: currentUser,
+            partner: currentChat
+        });
+    }
+    
+    // Update UI
+    document.querySelectorAll(".contact").forEach(el => {
+        el.classList.remove("active");
+    });
+    event.currentTarget.classList.add("active");
+    
+    // Join new room
+    socket.emit("join_chat", {
+        username: currentUser,
+        partner: partner
+    });
+}
+
+// Update chat header
+function updateChatHeader(partner) {
+    const header = document.getElementById("chatHeader");
+    const role = partner.startsWith('seller') ? 'Seller' : 'Buyer';
+    
+    header.innerHTML = `
+        <div class="chat-header-info">
+            <div class="chat-header-name">${partner}</div>
+            <div class="chat-header-role">${role}</div>
+        </div>
+        <div class="chat-status"></div>
+    `;
+}
+
+// Enable chat input
+function enableChatInput() {
+    document.getElementById("chatInput").style.display = "flex";
+    document.getElementById("messageInput").disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    document.getElementById("messageInput").focus();
+}
+
+// Load message history
+function loadMessageHistory(messages) {
+    const container = document.getElementById("chatMessages");
+    container.innerHTML = "";
+    
+    messages.forEach(msg => {
+        addMessage(msg, false);
+    });
+    
+    scrollToBottom();
+}
+
+// Add message to chat
+function addMessage(data, scroll = true) {
+    const container = document.getElementById("chatMessages");
+    
+    // Remove empty state if present
+    const emptyState = container.querySelector(".empty-state");
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${data.sender === currentUser ? 'sent' : 'received'}`;
+    
+    if (data.is_ai) {
+        messageDiv.classList.add("ai");
+    }
+    
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+    bubble.textContent = data.message;
+    
+    const info = document.createElement("div");
+    info.className = "message-info";
+    
+    const time = formatTimestamp(data.timestamp);
+    const sender = data.sender === currentUser ? 'You' : data.sender;
+    
+    info.innerHTML = `<span class="message-time">${time}</span> • ${sender}`;
+    
+    messageDiv.appendChild(bubble);
+    messageDiv.appendChild(info);
+    container.appendChild(messageDiv);
+    
+    if (scroll) {
+        scrollToBottom();
+    }
+}
+
+// Send message
+function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const message = input.value.trim();
+    
+    if (!message || !currentChat) return;
+    
+    // Disable input while sending
+    input.disabled = true;
+    document.getElementById("sendBtn").disabled = true;
+    
+    socket.emit("send_message", {
+        sender: currentUser,
+        receiver: currentChat,
+        message: message
+    });
+    
+    // Clear input and re-enable
+    input.value = "";
+    input.disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    input.focus();
+}
+
+// Format timestamp
+function formatTimestamp(timestamp) {
+    if (timestamp === "now") {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return "just now";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    return date.toLocaleDateString();
+}
+
+// Scroll to bottom
+function scrollToBottom() {
+    const container = document.getElementById("chatMessages");
+    container.scrollTop = container.scrollHeight;
+}
+
+// Show error message
+function showError(message) {
+    const input = document.getElementById("messageInput");
+    input.style.borderColor = "#f44336";
+    input.placeholder = message;
+    
+    setTimeout(() => {
+        input.style.borderColor = "";
+        input.placeholder = "Type a message...";
+    }, 3000);
+}
+
+// Enter key to send
+document.addEventListener("DOMContentLoaded", () => {
+    const messageInput = document.getElementById("messageInput");
+    const passwordInput = document.getElementById("password");
+    
+    messageInput?.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    passwordInput?.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            login();
+        }
+    });
+});
+</script>
+
+</body>
+</html>
