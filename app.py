@@ -25,12 +25,16 @@ def get_room_name(user1, user2):
 
 def log_room_membership():
     """Debug: Log current room membership"""
-    print(f"🏠 ROOM MEMBERSHIP DEBUG:")
-    for room_name, members in socketio.server.manager.get_rooms().items():
-        if room_name not in ['__default__']:  # Skip default room
-            print(f"  Room '{room_name}': {len(members)} clients")
-    print(f"👤 ACTIVE USERS: {list(active_users.keys())}")
-    print(f"🔗 USER-ROOMS: {user_rooms}")
+    try:
+        rooms = socketio.server.manager.get_rooms()
+        print(f"🏠 ROOM MEMBERSHIP DEBUG:")
+        for room_name, members in rooms.items():
+            if room_name not in ['__default__']:  # Skip default room
+                print(f"  Room '{room_name}': {len(members)} clients")
+        print(f"👤 ACTIVE USERS: {list(active_users.keys())}")
+        print(f"🔗 USER-ROOMS: {user_rooms}")
+    except Exception as e:
+        print(f"🔍 Room membership debug error: {e}")
 
 @app.route("/")
 def home():
@@ -98,7 +102,6 @@ def delete_message_route(message_id):
 @socketio.on("connect")
 def handle_connect():
     print(f"🔗 Client connected: {request.sid}")
-    log_room_membership()
 
 @socketio.on("disconnect")
 def handle_disconnect():
@@ -197,7 +200,6 @@ def handle_join_chat(data):
     emit("chat_history", history_data)
     
     print(f"📚 Sent chat history for {username} <-> {partner_username}")
-    log_room_membership()
 
 @socketio.on("leave_chat")
 def handle_leave_chat(data):
@@ -215,8 +217,6 @@ def handle_leave_chat(data):
             # Clean up empty room list
             if not user_rooms[username]:
                 del user_rooms[username]
-        
-        log_room_membership()
 
 @socketio.on("send_message")
 def handle_message(data):
