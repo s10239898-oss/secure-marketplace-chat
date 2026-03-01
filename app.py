@@ -38,6 +38,10 @@ def log_room_membership():
 
 @app.route("/")
 def home():
+    return render_template("cyberpunk.html")
+
+@app.route("/classic")
+def classic():
     return render_template("chat.html")
 
 @app.route("/api/contacts/<role>")

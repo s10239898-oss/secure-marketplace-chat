@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECURE MARKET NODE</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='cyberpunk.css') }}">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+        
+        :root {
+            --primary-bg: #0a0a0a;
+            --secondary-bg: #0f0f0f;
+            --panel-bg: rgba(15, 15, 15, 0.85);
+            --glass-bg: rgba(20, 20, 20, 0.6);
+            --neon-green: #00ff88;
+            --electric-cyan: #00ffff;
+            --crimson: #ff0044;
+            --terminal-amber: #ff9900;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-glow: rgba(0, 255, 136, 0.3);
+            --cyan-glow: rgba(0, 255, 255, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            overflow: hidden;
+            position: relative;
+            height: 100vh;
+        }
+
+        /* Animated Background */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                linear-gradient(180deg, #0a0a0a 0%, #0f0f0f 100%);
+        }
+
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleFloat 15s infinite;
+        }
+
+        @keyframes particleFloat {
+            0% { 
+                opacity: 0;
+                transform: translateY(100vh) scale(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(90vh) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(10vh) scale(1);
+            }
+            100% { 
+                opacity: 0;
+                transform: translateY(0) scale(0);
+            }
+        }
+
+        /* Header */
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-glow);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 100;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+            animation: scanline 3s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .system-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: var(--neon-green);
+            text-shadow: 0 0 10px var(--neon-green);
+            text-transform: uppercase;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border-right: 1px solid var(--border-glow);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--neon-green), transparent, var(--neon-green));
+            animation: borderPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes borderPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .nav-section {
+            padding: 20px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .nav-item:hover::before {
+            left: 100%;
+        }
+
+        .nav-item:hover {
+            border-color: var(--border-glow);
+            transform: translateX(5px);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .nav-item.active {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--neon-green);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--neon-green);
+        }
+
+        .nav-text {
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-glow);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-partner {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--electric-cyan);
+            text-shadow: 0 0 8px var(--electric-cyan);
+        }
+
+        .encryption-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid var(--cyan-glow);
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        .lock-icon {
+            animation: lockPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes lockPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .messages-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .messages-area::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-area::-webkit-scrollbar-track {
+            background: var(--secondary-bg);
+        }
+
+        .messages-area::-webkit-scrollbar-thumb {
+            background: var(--neon-green);
+            border-radius: 4px;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: messageSlide 0.5s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 12px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .message-bubble:hover {
+            transform: scale(1.02);
+        }
+
+        .message.buyer .message-bubble {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid var(--cyan-glow);
+            margin-left: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .message.seller .message-bubble {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--border-glow);
+            margin-right: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .message.ai .message-bubble {
+            background: rgba(255, 153, 0, 0.1);
+            border: 1px solid rgba(255, 153, 0, 0.3);
+            margin-right: auto;
+            box-shadow: 0 0 20px rgba(255, 153, 0, 0.2);
+        }
+
+        .message-sender {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .message.buyer .message-sender {
+            color: var(--electric-cyan);
+        }
+
+        .message.seller .message-sender {
+            color: var(--neon-green);
+        }
+
+        .message.ai .message-sender {
+            color: var(--terminal-amber);
+        }
+
+        .message-content {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* Input Area */
+        .input-area {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid var(--border-glow);
+            padding: 20px 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-glow);
+            border-radius: 25px;
+            padding: 15px 25px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .message-input:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .message-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, var(--neon-green), var(--electric-cyan));
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .send-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.5s ease;
+        }
+
+        .send-button:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .send-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+
+        /* Login Modal */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .login-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 40px;
+            width: 400px;
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.3);
+            animation: modalSlide 0.5s ease;
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .login-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--neon-green);
+            text-shadow: 0 0 20px var(--neon-green);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            padding: 12px 15px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .login-button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--neon-green), var(--electric-cyan));
+            border: none;
+            border-radius: 8px;
+            padding: 15px;
+            color: var(--primary-bg);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            animation: typingPulse 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingPulse {
+            0%, 60%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Hidden by default */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+            }
+            
+            .nav-text {
+                display: none;
+            }
+            
+            .message-bubble {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Effects -->
+    <div class="background-container"></div>
+    <div class="grid-overlay"></div>
+    <div class="particles" id="particles"></div>
+
+    <!-- Login Modal -->
+    <div class="login-modal" id="loginModal">
+        <div class="login-container">
+            <h2 class="login-title">System Access</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <select class="form-select" id="username" required>
+                        <option value="">Select Identity</option>
+                        <option value="buyer1">Buyer Alpha</option>
+                        <option value="buyer2">Buyer Beta</option>
+                        <option value="buyer3">Buyer Gamma</option>
+                        <option value="buyer4">Buyer Delta</option>
+                        <option value="buyer5">Buyer Epsilon</option>
+                        <option value="seller1">Seller One</option>
+                        <option value="seller2">Seller Two</option>
+                        <option value="seller3">Seller Three</option>
+                        <option value="seller4">Seller Four</option>
+                        <option value="seller5">Seller Five</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Access Key</label>
+                    <input type="password" class="form-input" id="password" placeholder="Enter encryption key" required>
+                </div>
+                <button type="submit" class="login-button">Initialize Connection</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Interface -->
+    <div class="main-container hidden" id="mainInterface">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="nav-section">
+                <div class="nav-item active" data-section="dashboard">
+                    <div class="nav-icon">◆</div>
+                    <div class="nav-text">Dashboard</div>
+                </div>
+                <div class="nav-item" data-section="messages">
+                    <div class="nav-icon">◈</div>
+                    <div class="nav-text">Messages</div>
+                </div>
+                <div class="nav-item" data-section="trades">
+                    <div class="nav-icon">◉</div>
+                    <div class="nav-text">Active Trades</div>
+                </div>
+                <div class="nav-item" data-section="ai">
+                    <div class="nav-icon">◊</div>
+                    <div class="nav-text">AI Assistant</div>
+                </div>
+                <div class="nav-item" data-section="security">
+                    <div class="nav-icon">◐</div>
+                    <div class="nav-text">Security Logs</div>
+                </div>
+                <div class="nav-item" data-section="settings">
+                    <div class="nav-icon">◑</div>
+                    <div class="nav-text">Settings</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="system-title">SECURE MARKET NODE</div>
+                <div class="connection-status">
+                    <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        <span>Online</span>
+                    </div>
+                    <div class="status-indicator">
+                        <span>Signal: Strong</span>
+                    </div>
+                    <div class="encryption-status">
+                        <div class="lock-icon">🔒</div>
+                        <span>Encrypted</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <div class="chat-partner" id="chatPartner">Select Contact</div>
+                <div class="encryption-status">
+                    <div class="lock-icon">🔐</div>
+                    <span>E2E Secure</span>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div class="messages-area" id="messagesArea">
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <input type="text" class="message-input" id="messageInput" placeholder="Transmit secure message..." disabled>
+                <button class="send-button" id="sendButton" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // Socket.IO connection
+        const socket = io();
+        let currentUser = null;
+        let currentPartner = null;
+        let isLoggedIn = false;
+
+        // DOM Elements
+        const loginModal = document.getElementById('loginModal');
+        const mainInterface = document.getElementById('mainInterface');
+        const loginForm = document.getElementById('loginForm');
+        const usernameSelect = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messagesArea = document.getElementById('messagesArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatPartner = document.getElementById('chatPartner');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // Login handler
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = usernameSelect.value;
+            const password = passwordInput.value;
+            
+            if (username && password) {
+                socket.emit('login', { username, password });
+            }
+        });
+
+        // Socket event handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('login_success', (data) => {
+            currentUser = data.username;
+            isLoggedIn = true;
+            loginModal.classList.add('hidden');
+            mainInterface.classList.remove('hidden');
+            loadContacts();
+        });
+
+        socket.on('login_error', (data) => {
+            alert('Access denied: ' + data.message);
+        });
+
+        // Load contacts
+        function loadContacts() {
+            const userRole = currentUser.startsWith('buyer') ? 'seller' : 'buyer';
+            fetch(`/api/contacts/${userRole}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayContacts(data.users);
+                });
+        }
+
+        // Display contacts (simplified for demo)
+        function displayContacts(users) {
+            // For demo, auto-select first contact
+            if (users.length > 0) {
+                currentPartner = users[0];
+                chatPartner.textContent = currentPartner;
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                
+                // Join chat room
+                socket.emit('join_chat', {
+                    username: currentUser,
+                    partner: currentPartner
+                });
+            }
+        }
+
+        // Send message
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && currentUser && currentPartner) {
+                socket.emit('send_message', {
+                    sender: currentUser,
+                    receiver: currentPartner,
+                    message: message
+                });
+                messageInput.value = '';
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Receive message
+        socket.on('receive_message', (data) => {
+            displayMessage(data);
+        });
+
+        // Display message
+        function displayMessage(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${data.sender === currentUser ? 'buyer' : (data.is_ai ? 'ai' : 'seller')}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'message-sender';
+            senderDiv.textContent = data.sender + (data.is_ai ? ' [AI]' : '');
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = data.message;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = new Date().toLocaleTimeString();
+            
+            bubbleDiv.appendChild(senderDiv);
+            bubbleDiv.appendChild(contentDiv);
+            bubbleDiv.appendChild(timeDiv);
+            messageDiv.appendChild(bubbleDiv);
+            
+            messagesArea.appendChild(messageDiv);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Initialize
+        createParticles();
+    </script>
+    <script src="{{ url_for('static', filename='cyberpunk.js') }}"></script>
+</body>
+</html>
