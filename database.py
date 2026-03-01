@@ -147,7 +147,7 @@ def get_message_history(buyer_username, seller_username, limit=50, offset=0):
     cur.close()
     conn.close()
     
-    # Decrypt messages
+    # Decrypt messages and convert timestamps to strings
     history = []
     for message_id, username, encrypted_content, timestamp in messages:
         try:
@@ -156,7 +156,7 @@ def get_message_history(buyer_username, seller_username, limit=50, offset=0):
                 "id": message_id,
                 "sender": username,
                 "message": decrypted_content,
-                "timestamp": timestamp
+                "timestamp": timestamp.isoformat() if timestamp else None
             })
         except Exception as e:
             print(f"Error decrypting message {message_id}: {e}")
@@ -216,7 +216,7 @@ def get_recent_conversations(username, limit=10):
             "conversation_id": conv_id,
             "partner": partner_name,
             "partner_role": partner_role,
-            "last_message_time": last_time,
+            "last_message_time": last_time.isoformat() if last_time else None,
             "message_count": msg_count or 0
         })
     
@@ -279,7 +279,7 @@ def search_messages(username, partner_username, query, limit=20):
                     "id": message_id,
                     "sender": username,
                     "message": decrypted_content,
-                    "timestamp": timestamp
+                    "timestamp": timestamp.isoformat() if timestamp else None
                 })
                 if len(results) >= limit:
                     break
